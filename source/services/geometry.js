@@ -104,10 +104,8 @@
            rect.top <= point.y && rect.bottom >= point.y;
   };
 
-  window.geometry = geometry;
-
   angular.module("ui.tree")
-         .service("geometry", function () {
+         .factory("uiTreeGeometry", function () {
             return geometry;
           });
 })();

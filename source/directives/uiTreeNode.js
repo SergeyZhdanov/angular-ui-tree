@@ -3,8 +3,8 @@
 
   angular.module('ui.tree')
 
-    .directive('uiTreeNode', ['treeConfig', '$uiTreeHelper', '$window', '$document', '$timeout', 'geometry',
-      function (treeConfig, $uiTreeHelper, $window, $document, $timeout, geometry) {
+    .directive('uiTreeNode', ['treeConfig', '$uiTreeHelper', '$window', '$document', '$timeout', 'uiTreeGeometry', 'uiTreeArrayUtils',
+      function (treeConfig, $uiTreeHelper, $window, $document, $timeout, geometry, arrayUtils) {
         return {
           require: ['^uiTreeNodes', '^uiTree'],
           restrict: 'A',
@@ -395,7 +395,7 @@
               };
 
               // Looking for tree overlapped by drag elm
-              var trees = Array.from(document.querySelectorAll(".angular-ui-tree"))
+              var trees = arrayUtils.sortBy(arrayUtils.asArray(document.querySelectorAll(".angular-ui-tree"))
                                 .map(function (tree) {
                                   var rec = geometry.rect(tree);
                                   return {
@@ -407,8 +407,7 @@
                                 })
                                 .filter(function (a) {
                                   return a.area > 0;
-                                })
-                                .sortBy(function (a) {
+                                }), function (a) {
                                   return a.area;
                                 });
 
@@ -420,14 +419,13 @@
               else {
                 // Find nearest node or tree
                 // 
-                var potentialTargets = Array.from(document.querySelectorAll(".angular-ui-tree"))
-                                            .sortBy(function (node) {
+                var potentialTargets = arrayUtils.sortBy(arrayUtils.asArray(document.querySelectorAll(".angular-ui-tree")), function (node) {
                                               var rec = geometry.rect(node);
                                               return geometry.distanceToPoint(rec.left, rec.top, dragElmRect.left, dragElmRect.top);
                                             });
                 if (potentialTargets.length) {
                   var tree = potentialTargets[0];
-                  var nodes = Array.from(tree.querySelectorAll("[ui-tree] > [ui-tree-nodes] > [ui-tree-node]"));
+                  var nodes = arrayUtils.asArray(tree.querySelectorAll("[ui-tree] > [ui-tree-nodes] > [ui-tree-node]"));
                   if (!nodes.length) {
                     return tree;
                   }
