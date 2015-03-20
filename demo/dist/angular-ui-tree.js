@@ -840,7 +840,25 @@
               scope.dragDelay = val;
             }
           });
-          
+
+          scope.$watch(attrs.lockX, function(val) {
+            if ((typeof val) == "boolean") {
+              scope.lockX = val;
+            }
+          });
+
+          scope.$watch(attrs.lockY, function(val) {
+            if ((typeof val) == "boolean") {
+              scope.lockY = val;
+            }
+          });
+
+          scope.$watch(attrs.boundTo, function(val) {
+            if ((typeof val) == "string" && val.length > 0) {
+              scope.boundTo = angular.element(val);
+            }
+          });
+
           // check if the dest node can accept the dragging node
           // by default, we check the 'data-nodrop' attribute in `ui-tree-nodes`
           // and the 'max-depth' attribute in `ui-tree` or `ui-tree-nodes`.
@@ -1087,7 +1105,7 @@
               dragElm.css('z-index', 9999);
 
               // Prevents cursor to change rapidly in Opera 12.16 and IE when dragging an element
-              var hStyle = (scope.$element[0].querySelector('.angular-ui-tree-handle') || scope.$element[0]).currentStyle;
+              var hStyle = (scope.$element[0].querySelector('.' + config.handleClass) || scope.$element[0]).currentStyle;
               if (hStyle) {
                 document.body.setAttribute('ui-tree-cursor', $document.find('body').css('cursor') || '');
                 $document.find('body').css({ 'cursor': hStyle.cursor + '!important' });
@@ -1143,31 +1161,60 @@
 
                 leftElmPos = eventObj.pageX - pos.offsetX;
                 topElmPos = eventObj.pageY - pos.offsetY;
-
-                //dragElm can't leave the screen on the left
-                if (leftElmPos < 0) {
-                  leftElmPos = 0;
+                //dragElm can't leave the screen or the bounding parent on the left
+                var isBoundTo = scope.boundTo && scope.boundTo.length > 0;
+                if ((!isBoundTo && leftElmPos < 0) || (isBoundTo && leftElmPos < scope.boundTo.offset().left)) {
+                  leftElmPos = !isBoundTo ? 0 : scope.boundTo.offset().left;
                 }
 
-                //dragElm can't leave the screen on the top
-                if (topElmPos < 0) {
-                  topElmPos = 0;
+                //dragElm can't leave the screen or the bounding parent on the top
+                if ((!isBoundTo && topElmPos < 0) || (isBoundTo && topElmPos < scope.boundTo.offset().top)) {
+                  topElmPos = !isBoundTo ? 0 : scope.boundTo.offset().top;
+
+                  if (isBoundTo) {
+                    scope.boundTo[0].scrollTop -= 10;
+                  }
                 }
 
                 //dragElm can't leave the screen on the bottom
-                if ((topElmPos + 10) > document_height) {
-                  topElmPos = document_height - 10;
+                var handleElement = scope.$element.find('.' + config.handleClass);
+                var handleHeight = (handleElement && handleElement.length) ? handleElement.height() : 10;
+
+                //dragElm can't leave the screen or the bounding parent on the bottom
+                if ((!isBoundTo && (topElmPos + handleHeight) > document_height) ||
+                  (scope.boundTo && (topElmPos + handleHeight) >
+                  (scope.boundTo.offset().top + scope.boundTo.height()))) {
+
+                  topElmPos = !isBoundTo ? (document_height - handleHeight) : ((scope.boundTo.offset().top + scope.boundTo.height()) - handleHeight);
+
+                  if (isBoundTo) {
+                    scope.boundTo[0].scrollTop += 10;
+                  }
                 }
 
                 //dragElm can't leave the screen on the right
-                if ((leftElmPos + 10) > document_width) {
-                  leftElmPos = document_width - 10;
+                if ((!isBoundTo &&
+                  (leftElmPos + $uiTreeHelper.width(scope.$element)) > document_width) ||
+                  (scope.boundTo && (leftElmPos + $uiTreeHelper.width(scope.$element)) >
+                  (scope.boundTo.offset().left + scope.boundTo.width()))) {
+                  /* jshint maxlen: false */
+                  leftElmPos = !isBoundTo ? (document_width - $uiTreeHelper.width(scope.$element)) : ((scope.boundTo.offset().left + scope.boundTo.width()) - $uiTreeHelper.width(scope.$element));
                 }
 
-                dragElm.css({
-                  'left': leftElmPos + 'px',
-                  'top': topElmPos + 'px'
-                });
+                if (scope.lockY) {
+                  dragElm.css({
+                    'left': leftElmPos + 'px'
+                  });
+                } else if (scope.lockX) {
+                  dragElm.css({
+                    'top': topElmPos + 'px'
+                  });
+                } else {
+                  dragElm.css({
+                    'left': leftElmPos + 'px',
+                    'top': topElmPos + 'px'
+                  });
+                }
 
                 var top_scroll = window.pageYOffset || $window.document.documentElement.scrollTop;
                 var bottom_scroll = top_scroll + (window.innerHeight || $window.document.clientHeight || $window.document.clientHeight);
@@ -1361,7 +1408,7 @@
               };
 
               // Looking for tree overlapped by drag elm
-              var trees = arrayUtils.sortBy(arrayUtils.asArray(document.querySelectorAll(".angular-ui-tree"))
+              var trees = arrayUtils.sortBy(arrayUtils.asArray(document.querySelectorAll('.' + config.treeClass))
                                 .map(function (tree) {
                                   var rec = geometry.rect(tree);
                                   return {
@@ -1385,7 +1432,7 @@
               else {
                 // Find nearest node or tree
                 // 
-                var potentialTargets = arrayUtils.sortBy(arrayUtils.asArray(document.querySelectorAll(".angular-ui-tree")), function (node) {
+                var potentialTargets = arrayUtils.sortBy(arrayUtils.asArray(document.querySelectorAll('.' + config.treeClass)), function (node) {
                                               var rec = geometry.rect(node);
                                               return geometry.distanceToPoint(rec.left, rec.top, dragElmRect.left, dragElmRect.top);
                                             });
