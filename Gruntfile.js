@@ -101,10 +101,12 @@ module.exports = function(grunt) {
           '<%= cfg.srcDir %>/controllers/nodesCtrl.js',
           '<%= cfg.srcDir %>/controllers/nodeCtrl.js',
           '<%= cfg.srcDir %>/controllers/handleCtrl.js',
+          '<%= cfg.srcDir %>/controllers/nodeTitleCtrl.js',
           '<%= cfg.srcDir %>/directives/uiTree.js',
           '<%= cfg.srcDir %>/directives/uiTreeNodes.js',
           '<%= cfg.srcDir %>/directives/uiTreeNode.js',
           '<%= cfg.srcDir %>/directives/uiTreeHandle.js',
+          '<%= cfg.srcDir %>/directives/uiTreeNodeTitle.js',
         ],
         dest: '<%= cfg.buildDir %>/angular-ui-tree.js'
       }

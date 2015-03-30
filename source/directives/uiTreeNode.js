@@ -306,32 +306,34 @@
                   dragElm[0].style.display = displayElm;
                 }
 
-                // Expanding on drag over 
-                // inspecting element under cursor, not nearest element
-                var targetElmScope = angular.element(e.target).scope();
-                if (targetElmScope && targetElmScope.$type != 'uiTreeHandle') {
-                  resetExpandingTimeout();
-                }
-                else {
-                  var startExpandingTimeout = function () {
+                if (config.enableAutoExpand) {
+                  // Expanding on drag over
+                  // inspecting element under cursor, not nearest element
+                  var targetElmScope = angular.element(e.target).scope();
+                  if (targetElmScope && targetElmScope.$type != 'uiTreeHandle') {
                     resetExpandingTimeout();
-                    dragInfo.$standingTimeout = $timeout(function () {
-                      targetElmScope.expand();
-                    }, 500);
-                    dragInfo.$standingPoint = {
-                      x: targetX,
-                      y: targetY
-                    };
-                    dragInfo.$expandingNode = targetElmScope;
-                  };
-
-                  if (!dragInfo.$standingTimeout) {
-                    startExpandingTimeout();
                   }
                   else {
-                    if (dragInfo.$standingTimeout && (dragInfo.$expandingNode != targetElmScope ||
-                        geometry.distanceToPoint(targetX, targetY, dragInfo.$standingPoint.x, dragInfo.$standingPoint.y) > 10)) {
+                    var startExpandingTimeout = function () {
                       resetExpandingTimeout();
+                      dragInfo.$standingTimeout = $timeout(function () {
+                        targetElmScope.expand();
+                      }, 500);
+                      dragInfo.$standingPoint = {
+                        x: targetX,
+                        y: targetY
+                      };
+                      dragInfo.$expandingNode = targetElmScope;
+                    };
+
+                    if (!dragInfo.$standingTimeout) {
+                      startExpandingTimeout();
+                    }
+                    else {
+                      if (dragInfo.$standingTimeout && (dragInfo.$expandingNode != targetElmScope ||
+                          geometry.distanceToPoint(targetX, targetY, dragInfo.$standingPoint.x, dragInfo.$standingPoint.y) > 10)) {
+                        resetExpandingTimeout();
+                      }
                     }
                   }
                 }
@@ -349,6 +351,9 @@
                     isEmpty = targetNode.isEmpty(); // Check if it's empty tree
                   }
                   if (targetNode.$type == 'uiTreeHandle') {
+                    targetNode = targetNode.$nodeScope;
+                  }
+                  if (targetNode.$type == 'uiTreeNodeTitle') {
                     targetNode = targetNode.$nodeScope;
                   }
                   if (targetNode.$type != 'uiTreeNode'
@@ -370,16 +375,19 @@
                     }
                   } else if (targetNode.dragEnabled()) { // drag enabled
                     targetElm = targetNode.$element; // Get the element of ui-tree-node
+                    var targetTitleElm = targetNode.$nodeTitleScope ? targetNode.$nodeTitleScope.$element : null; // Get the element of ui-tree-node
 
-                    var targetOffset = $uiTreeHelper.offset(targetElm);
-                    var targetMidY = (targetOffset.top + $uiTreeHelper.height(targetElm) / 2);
-                    targetBefore = targetNode.horizontal ? eventObj.pageX < (targetOffset.left + $uiTreeHelper.width(targetElm) / 2)
-                                                         : eventObj.pageY < targetMidY;
+                    var targetOffset = $uiTreeHelper.offset(targetTitleElm || targetElm);
+                    var targetMidY = (targetOffset.top + $uiTreeHelper.height(targetTitleElm || targetElm) / 2);
+                    var targetMidX = (targetOffset.left + $uiTreeHelper.width(targetTitleElm || targetElm) / 2);
+
+                    targetBefore = targetNode.horizontal ? eventObj.pageX < targetMidX
+                      : eventObj.pageY < targetMidY;
 
                     if (targetNode.$parentNodesScope.accept(scope, targetNode.index())) {
-                      if (addAsChild(e, targetElm) && targetNode.accept(scope, targetNode.childNodesCount())) {
+                      if (addAsChild(targetNode, targetTitleElm, targetOffset, eventObj) && targetNode.accept(scope, targetNode.childNodesCount())) {
                         targetNode.$childNodesScope.$element.append(placeElm);
-                        dragInfo.moveTo(targetNode.$childNodesScope, targetNode.childNodes(), targetNode.childNodesCount());
+                        dragInfo.moveTo(targetNode.$childNodesScope, targetNode.childNodes(), targetNode.childNodesCount(), true);
                       }
                       else {
                         if (targetBefore) {
@@ -481,20 +489,26 @@
             };
 
             // Returns true if dragging element should be added as child of target element.
-            var addAsChild = function (e, targetElement) {
-              var targetNode= angular.element(targetElement).scope();
-              if(targetNode.childNodesCount() !== 0 || targetNode.collapsed) {
-                return false;
+            var addAsChild = function (targetNode, targetTitleElm, targetOffset, eventObj) {
+              if (!targetTitleElm) {
+                if(targetNode.childNodesCount() === 0 && !targetNode.collapsed) {
+                  targetTitleElm = targetNode.$element;
+                } else {
+                  return false;
+                }
               }
 
-              var dragElmRect = geometry.translateRect(dragInfo.originalRect, geometry.offset(dragInfo.originalPoint, { x: e.pageX, y: e.pageY }));
-              var targetElmRect = geometry.rect(targetElement[0].children[0]);
-              var overlapRectArea = geometry.overlapArea(dragElmRect, targetElmRect);
-              var dragElmRectArea = geometry.rectArea(dragElmRect);
-              var targetElmRectArea = geometry.rectArea(targetElmRect);
-              var overlappingPercent = (Math.max(1, overlapRectArea) / Math.min(dragElmRectArea, targetElmRectArea)) * 100;
-
-              return overlappingPercent > 60;
+              var targetTitleQuarterH = $uiTreeHelper.height(targetTitleElm) / 4;
+              var targetTitleQuarterW = $uiTreeHelper.width(targetTitleElm) / 4;
+              var targetTitleMidY = (targetOffset.top + $uiTreeHelper.height(targetTitleElm) / 2);
+              var targetTitleMidX = (targetOffset.left + $uiTreeHelper.width(targetTitleElm) / 2);
+              var targetTitleBottom = targetTitleMidY + targetTitleQuarterH;
+              if (!targetNode.collapsed && targetNode.childNodesCount() > 0) {
+                targetTitleBottom = targetTitleMidY + targetTitleQuarterH * 2 +2;
+              }
+              return targetNode.horizontal
+                ? (eventObj.pageX >= targetTitleMidX - targetTitleQuarterW && eventObj.pageX <= targetTitleMidX + targetTitleQuarterW)
+                : (eventObj.pageY >= targetTitleMidY - targetTitleQuarterH && eventObj.pageY <= targetTitleBottom);
             };
 
             var isInUiTree = function (element) {

@@ -14,6 +14,7 @@
         $scope.$parentNodesScope = null; // uiTreeNodes Scope of parent nodes.
         $scope.$treeScope = null; // uiTree scope
         $scope.$handleScope = null; // it's handle scope
+        $scope.$nodeTitleScope = null; // it's title scope
         $scope.$type = 'uiTreeNode';
         $scope.$$apply = false; //
 

@@ -85,8 +85,9 @@
               index: node.index(),
               siblings: node.siblings().slice(0),
               parent: node.$parentNodesScope,
+              inside: false,
 
-              moveTo: function(parent, siblings, index) { // Move the node to a new position
+              moveTo: function(parent, siblings, index, inside) { // Move the node to a new position
                 this.parent = parent;
                 this.siblings = siblings.slice(0);
                 var i = this.siblings.indexOf(this.source); // If source node is in the target nodes
@@ -98,6 +99,7 @@
                 }
                 this.siblings.splice(index, 0, this.source);
                 this.index = index;
+                this.inside = inside;
               },
 
               parentNode: function() {
@@ -132,7 +134,8 @@
                     treeId: this.parent.$treeId
                   },
                   elements: elements,
-                  pos: pos
+                  pos: pos,
+                  inside: this.inside
                 };
               },
 
